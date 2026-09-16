@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { findFreePosition } from "@/lib/layout"
 import type { AppState, Category, Memory } from "@/lib/types"
 
-type Status = "loading" | "ready" | "error"
+type Status = "ready" | "error"
 
 async function parseError(response: Response) {
   try {
@@ -22,6 +22,7 @@ async function requestState(
   init?: RequestInit,
 ): Promise<AppState> {
   const response = await fetch(url, {
+    cache: "no-store",
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -34,9 +35,9 @@ async function requestState(
   return (await response.json()) as AppState
 }
 
-export function useSky() {
-  const [state, setState] = useState<AppState | null>(null)
-  const [status, setStatus] = useState<Status>("loading")
+export function useSky(initialState: AppState) {
+  const [state, setState] = useState<AppState>(initialState)
+  const [status, setStatus] = useState<Status>("ready")
   const timers = useRef(new Map<string, number>())
 
   const apply = useCallback((next: AppState) => {
@@ -45,7 +46,6 @@ export function useSky() {
   }, [])
 
   const load = useCallback(async () => {
-    setStatus("loading")
     try {
       const next = await requestState("/api/state")
       apply(next)
@@ -53,24 +53,6 @@ export function useSky() {
       setStatus("error")
     }
   }, [apply])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch("/api/state", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(await parseError(response))
-        return (await response.json()) as AppState
-      })
-      .then((next) => {
-        setState(next)
-        setStatus("ready")
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return
-        setStatus("error")
-      })
-    return () => controller.abort()
-  }, [])
 
   useEffect(() => {
     const activeTimers = timers.current
@@ -90,7 +72,7 @@ export function useSky() {
       const position =
         input.x !== undefined && input.y !== undefined
           ? { x: input.x, y: input.y }
-          : findFreePosition(state?.memories ?? [])
+          : findFreePosition(state.memories)
       const optimistic: Memory = {
         id: `tmp-${crypto.randomUUID()}`,
         title: input.title,
@@ -101,11 +83,10 @@ export function useSky() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
-      setState((current) =>
-        current
-          ? { ...current, memories: [...current.memories, optimistic] }
-          : current,
-      )
+      setState((current) => ({
+        ...current,
+        memories: [...current.memories, optimistic],
+      }))
       try {
         const next = await requestState("/api/memories", {
           method: "POST",
@@ -118,7 +99,7 @@ export function useSky() {
         throw error
       }
     },
-    [apply, load, state?.memories],
+    [apply, load, state.memories],
   )
 
   const updateMemory = useCallback(
@@ -126,17 +107,14 @@ export function useSky() {
       id: string,
       patch: Partial<Pick<Memory, "title" | "notes" | "categoryId" | "x" | "y">>,
     ) => {
-      setState((current) => {
-        if (!current) return current
-        return {
-          ...current,
-          memories: current.memories.map((memory) =>
-            memory.id === id
-              ? { ...memory, ...patch, updatedAt: new Date().toISOString() }
-              : memory,
-          ),
-        }
-      })
+      setState((current) => ({
+        ...current,
+        memories: current.memories.map((memory) =>
+          memory.id === id
+            ? { ...memory, ...patch, updatedAt: new Date().toISOString() }
+            : memory,
+        ),
+      }))
       try {
         const next = await requestState(`/api/memories/${id}`, {
           method: "PATCH",
@@ -154,15 +132,12 @@ export function useSky() {
 
   const moveMemory = useCallback(
     (id: string, x: number, y: number) => {
-      setState((current) => {
-        if (!current) return current
-        return {
-          ...current,
-          memories: current.memories.map((memory) =>
-            memory.id === id ? { ...memory, x, y } : memory,
-          ),
-        }
-      })
+      setState((current) => ({
+        ...current,
+        memories: current.memories.map((memory) =>
+          memory.id === id ? { ...memory, x, y } : memory,
+        ),
+      }))
       const existing = timers.current.get(id)
       if (existing) window.clearTimeout(existing)
       const timer = window.setTimeout(() => {
@@ -187,13 +162,10 @@ export function useSky() {
 
   const deleteMemory = useCallback(
     async (id: string) => {
-      setState((current) => {
-        if (!current) return current
-        return {
-          ...current,
-          memories: current.memories.filter((memory) => memory.id !== id),
-        }
-      })
+      setState((current) => ({
+        ...current,
+        memories: current.memories.filter((memory) => memory.id !== id),
+      }))
       try {
         const next = await requestState(`/api/memories/${id}`, {
           method: "DELETE",
@@ -226,15 +198,12 @@ export function useSky() {
 
   const updateCategory = useCallback(
     async (id: string, patch: Partial<Pick<Category, "name" | "color">>) => {
-      setState((current) => {
-        if (!current) return current
-        return {
-          ...current,
-          categories: current.categories.map((category) =>
-            category.id === id ? { ...category, ...patch } : category,
-          ),
-        }
-      })
+      setState((current) => ({
+        ...current,
+        categories: current.categories.map((category) =>
+          category.id === id ? { ...category, ...patch } : category,
+        ),
+      }))
       try {
         const next = await requestState(`/api/categories/${id}`, {
           method: "PATCH",

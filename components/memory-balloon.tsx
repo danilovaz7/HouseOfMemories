@@ -49,7 +49,7 @@ export function MemoryBalloon({
           "block w-full origin-center touch-none select-none text-left",
           dragging ? "cursor-grabbing" : "cursor-grab",
         )}
-        initial={{ opacity: 0, scale: 0.72 }}
+        initial={false}
         animate={
           dragging
             ? { opacity: 1, scale: 1.06, x: 0, y: 0 }

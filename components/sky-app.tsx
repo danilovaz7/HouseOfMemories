@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { CloudOff, Loader2, RefreshCw } from "lucide-react"
+import { CloudOff, RefreshCw } from "lucide-react"
 
 import { CategoryManager } from "@/components/category-manager"
 import {
@@ -14,22 +14,22 @@ import { Toolbar } from "@/components/toolbar"
 import { Button } from "@/components/ui/button"
 import { useSky } from "@/hooks/use-sky"
 import { findFreePosition } from "@/lib/layout"
+import type { AppState } from "@/lib/types"
 
-export function SkyApp() {
-  const sky = useSky()
+export function SkyApp({ initialState }: { initialState: AppState }) {
+  const sky = useSky(initialState)
   const [filter, setFilter] = useState<string | "all">("all")
   const [sheetOpen, setSheetOpen] = useState(false)
   const [typesOpen, setTypesOpen] = useState(false)
   const [draft, setDraft] = useState<MemoryDraft | null>(null)
 
-  const categories = sky.state?.categories ?? []
-  const memories = sky.state?.memories ?? []
+  const categories = sky.state.categories
+  const memories = sky.state.memories
 
   const matchCount = useMemo(() => {
-    const list = sky.state?.memories ?? []
-    if (filter === "all") return list.length
-    return list.filter((memory) => memory.categoryId === filter).length
-  }, [filter, sky.state?.memories])
+    if (filter === "all") return memories.length
+    return memories.filter((memory) => memory.categoryId === filter).length
+  }, [filter, memories])
 
   function openCreate(position?: { x: number; y: number }) {
     const fallback = categories[0]
@@ -92,31 +92,20 @@ export function SkyApp() {
         onManageTypes={() => setTypesOpen(true)}
       />
 
-      {sky.status === "loading" ? (
-        <StatusCard>
-          <Loader2 className="size-5 animate-spin text-sky-700" />
-          <p className="font-heading text-sm font-semibold">Carregando o céu…</p>
-          <p className="text-xs text-slate-600">Buscando suas lembranças.</p>
-        </StatusCard>
-      ) : null}
-
       {sky.status === "error" ? (
-        <StatusCard>
-          <CloudOff className="size-5 text-rose-500" />
-          <p className="font-heading text-sm font-semibold">
-            O céu não respondeu
-          </p>
-          <p className="text-xs text-slate-600">
-            Não deu para carregar as lembranças. Tente de novo.
-          </p>
-          <Button size="sm" className="mt-1" onClick={() => void sky.load()}>
-            <RefreshCw data-icon="inline-start" />
-            Tentar novamente
-          </Button>
-        </StatusCard>
+        <div className="pointer-events-none fixed inset-x-0 top-24 z-40 flex justify-center px-3 max-md:top-auto max-md:bottom-28">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-rose-200 bg-white/90 px-3 py-2 text-sm text-rose-700 shadow-lg backdrop-blur-xl">
+            <CloudOff className="size-4" />
+            Sem conexão com o céu.
+            <Button size="sm" variant="ghost" onClick={() => void sky.load()}>
+              <RefreshCw data-icon="inline-start" />
+              Tentar de novo
+            </Button>
+          </div>
+        </div>
       ) : null}
 
-      {sky.status === "ready" && memories.length === 0 ? (
+      {memories.length === 0 ? (
         <StatusCard className="pointer-events-none">
           <p className="font-heading text-lg font-semibold">Céu calmo</p>
           <p className="max-w-xs text-sm text-slate-600">
@@ -126,7 +115,7 @@ export function SkyApp() {
         </StatusCard>
       ) : null}
 
-      {sky.status === "ready" && memories.length > 0 && matchCount === 0 ? (
+      {memories.length > 0 && matchCount === 0 ? (
         <StatusCard className="pointer-events-none">
           <p className="font-heading text-sm font-semibold">
             Nada neste tipo por enquanto
