@@ -1,10 +1,13 @@
 import { promises as fs } from "node:fs"
 import path from "node:path"
 
+import { Redis } from "@upstash/redis"
+
 import { ensureCategoryPositions } from "@/lib/layout"
 import type { AppState, Category, Memory } from "@/lib/types"
 
-const DATA_PATH = path.join(process.cwd(), "data", "memories.json")
+const KV_STATE_KEY = "house-of-memories:state"
+const SEED_PATH = path.join(process.cwd(), "data", "memories.json")
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "faculdade", name: "Faculdade", color: "#f59e0b", x: 0.26, y: 0.38 },
@@ -70,6 +73,35 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
   return next
 }
 
+function isVercelRuntime() {
+  return process.env.VERCEL === "1"
+}
+
+let redisClient: Redis | null = null
+
+function getRedis(): Redis | null {
+  if (redisClient) return redisClient
+  const url =
+    process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL
+  const token =
+    process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return null
+  redisClient = new Redis({ url, token })
+  return redisClient
+}
+
+function hasKvStore() {
+  return getRedis() !== null
+}
+
+function writableFilePath() {
+  if (hasKvStore()) return null
+  if (isVercelRuntime()) {
+    return path.join("/tmp", "house-of-memories-state.json")
+  }
+  return path.join(process.cwd(), "data", "memories.json")
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
@@ -126,24 +158,71 @@ function normalizeState(value: unknown): AppState {
   return { categories, memories }
 }
 
-async function readFromDisk(): Promise<AppState> {
+async function loadSeedState(): Promise<AppState> {
   try {
-    const raw = await fs.readFile(DATA_PATH, "utf8")
-    const state = normalizeState(JSON.parse(raw))
-    return state
+    const raw = await fs.readFile(SEED_PATH, "utf8")
+    return normalizeState(JSON.parse(raw))
   } catch {
-    const initial = structuredClone(DEFAULT_STATE)
-    await writeToDisk(initial)
-    return initial
+    return structuredClone(DEFAULT_STATE)
   }
+}
+
+async function readFromKv(): Promise<AppState | null> {
+  const redis = getRedis()
+  if (!redis) return null
+  const value = await redis.get<AppState>(KV_STATE_KEY)
+  if (!value) return null
+  return normalizeState(value)
+}
+
+async function readFromFile(): Promise<AppState | null> {
+  const filePath = writableFilePath()
+  if (!filePath) return null
+  try {
+    const raw = await fs.readFile(filePath, "utf8")
+    return normalizeState(JSON.parse(raw))
+  } catch {
+    return null
+  }
+}
+
+async function readFromDisk(): Promise<AppState> {
+  const fromKv = await readFromKv()
+  if (fromKv) return fromKv
+
+  const fromFile = await readFromFile()
+  if (fromFile) return fromFile
+
+  const initial = await loadSeedState()
+  await writeToDisk(initial)
+  return initial
 }
 
 async function writeToDisk(state: AppState): Promise<void> {
   const normalized = normalizeState(state)
-  await fs.mkdir(path.dirname(DATA_PATH), { recursive: true })
-  const tmp = `${DATA_PATH}.tmp`
-  await fs.writeFile(tmp, `${JSON.stringify(normalized, null, 2)}\n`, "utf8")
-  await fs.rename(tmp, DATA_PATH)
+  const payload = `${JSON.stringify(normalized, null, 2)}\n`
+
+  const redis = getRedis()
+  if (redis) {
+    await redis.set(KV_STATE_KEY, normalized)
+    return
+  }
+
+  const filePath = writableFilePath()
+  if (!filePath) {
+    throw new Error("Nenhum armazenamento gravável configurado.")
+  }
+
+  await fs.mkdir(path.dirname(filePath), { recursive: true })
+
+  if (isVercelRuntime()) {
+    await fs.writeFile(filePath, payload, "utf8")
+    return
+  }
+
+  const tmp = `${filePath}.tmp`
+  await fs.writeFile(tmp, payload, "utf8")
+  await fs.rename(tmp, filePath)
 }
 
 export function getState(): Promise<AppState> {

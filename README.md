@@ -24,7 +24,17 @@ Abra [http://localhost:4317](http://localhost:4317).
 
 ## Persistência
 
-Não há login. Existe um único céu compartilhado, gravado em `data/memories.json` pela API Node (`/api/state`, `/api/memories`, `/api/categories`).
+Não há login. Existe um único céu compartilhado via API Node (`/api/state`, `/api/memories`, `/api/categories`).
+
+- **Local:** `data/memories.json`
+- **Vercel (produção):** conecte um **Redis** (Upstash) no projeto — Storage / Marketplace → Redis. As variáveis `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` (ou `KV_REST_API_*`) passam a guardar o estado de forma persistente.
+- Sem Redis na Vercel, a API usa `/tmp` só para não quebrar, mas os dados **não** ficam confiáveis entre requisições; use Redis em produção.
+
+## Deploy na Vercel
+
+1. Importe o repositório no [Vercel](https://vercel.com).
+2. Em **Storage** (ou Marketplace), adicione **Upstash Redis** ao projeto e vincule ao app.
+3. Redeploy. Arrastar, criar e apagar lembranças deve responder **200**, não **500**.
 
 ## Stack
 
