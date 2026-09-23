@@ -4,8 +4,8 @@
       "id": "faculdade",
       "name": "Faculdade",
       "color": "#f59e0b",
-      "x": 0.2824956672443674,
-      "y": 0.38662486938349006
+      "x": 0.22357019064124783,
+      "y": 0.40856844305120166
     },
     {
       "id": "afazeres",
@@ -42,20 +42,20 @@
       "title": "Entregar o trabalho de cálculo",
       "notes": "Lista 4, até sexta. Revisar os exercícios de integrais.",
       "categoryId": "faculdade",
-      "x": 0.15251299826689774,
-      "y": 0.2309299895506792,
+      "x": 0.31629116117850953,
+      "y": 0.24242424242424243,
       "createdAt": "2026-09-10T12:00:00.000Z",
-      "updatedAt": "2026-09-23T21:35:10.207Z"
+      "updatedAt": "2026-09-23T21:38:36.833Z"
     },
     {
       "id": "seed-dentista",
       "title": "Ligar para o dentista",
       "notes": "Remarcar a limpeza que ficou pendente no mês passado.",
       "categoryId": "pendencias",
-      "x": 0.8908145580589255,
-      "y": 0.22884012539184953,
+      "x": 0.584055459272097,
+      "y": 0.3385579937304075,
       "createdAt": "2026-09-11T12:00:00.000Z",
-      "updatedAt": "2026-09-23T21:35:14.221Z"
+      "updatedAt": "2026-09-23T21:38:36.620Z"
     },
     {
       "id": "seed-cafe",
