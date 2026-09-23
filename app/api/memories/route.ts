@@ -1,3 +1,4 @@
+import { requireSpaceId } from "@/lib/space"
 import { mutateState } from "@/lib/store"
 import {
   ApiError,
@@ -21,7 +22,8 @@ export async function POST(request: Request) {
     const categoryId =
       typeof body.categoryId === "string" ? body.categoryId : undefined
 
-    const state = await mutateState((current) => {
+    const spaceId = requireSpaceId(request)
+    const state = await mutateState(spaceId, (current) => {
       if (!categoryId) {
         throw new ApiError(400, "Tipo é obrigatório.")
       }

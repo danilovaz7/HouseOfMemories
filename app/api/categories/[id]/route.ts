@@ -1,3 +1,4 @@
+import { requireSpaceId } from "@/lib/space"
 import { moveCategoryCluster, mutateState } from "@/lib/store"
 import {
   ApiError,
@@ -21,7 +22,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     const color = parseColor(body, false)
     const { x, y } = parsePosition(body)
 
-    const state = await mutateState((current) => {
+    const spaceId = requireSpaceId(request)
+    const state = await mutateState(spaceId, (current) => {
       const category = current.categories.find((item) => item.id === id)
       if (!category) throw new ApiError(404, "Tipo não encontrado.")
       if (name) category.name = name
@@ -38,10 +40,11 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params
-    const state = await mutateState((current) => {
+    const spaceId = requireSpaceId(request)
+    const state = await mutateState(spaceId, (current) => {
       if (current.categories.length <= 1) {
         throw new ApiError(400, "Mantenha pelo menos um tipo.")
       }

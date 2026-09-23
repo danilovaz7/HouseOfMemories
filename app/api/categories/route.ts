@@ -1,4 +1,5 @@
 import { findFreeCategoryHub } from "@/lib/layout"
+import { requireSpaceId } from "@/lib/space"
 import { mutateState } from "@/lib/store"
 import { asRecord, jsonError, parseColor, parseName } from "@/lib/validation"
 
@@ -11,7 +12,8 @@ export async function POST(request: Request) {
     const name = parseName(body, true)!
     const color = parseColor(body, true)!
 
-    const state = await mutateState((current) => {
+    const spaceId = requireSpaceId(request)
+    const state = await mutateState(spaceId, (current) => {
       const hub = findFreeCategoryHub(current.categories, current.memories)
       current.categories.push({
         id: crypto.randomUUID(),

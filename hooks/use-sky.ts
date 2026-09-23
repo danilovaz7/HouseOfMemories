@@ -20,25 +20,28 @@ async function parseError(response: Response) {
   }
 }
 
-async function requestState(
+function requestState(
+  spaceId: string,
   url: string,
   init?: RequestInit,
 ): Promise<AppState> {
-  const response = await fetch(url, {
+  return fetch(url, {
     cache: "no-store",
     ...init,
     headers: {
       "Content-Type": "application/json",
+      "X-Space-Id": spaceId,
       ...(init?.headers ?? {}),
     },
+  }).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(await parseError(response))
+    }
+    return (await response.json()) as AppState
   })
-  if (!response.ok) {
-    throw new Error(await parseError(response))
-  }
-  return (await response.json()) as AppState
 }
 
-export function useSky(initialState: AppState) {
+export function useSky(spaceId: string, initialState: AppState) {
   const [state, setState] = useState<AppState>(initialState)
   const [status, setStatus] = useState<Status>("ready")
   const memoryTimers = useRef(new Map<string, number>())
@@ -51,12 +54,12 @@ export function useSky(initialState: AppState) {
 
   const load = useCallback(async () => {
     try {
-      const next = await requestState("/api/state")
+      const next = await requestState(spaceId, "/api/state")
       apply(next)
     } catch {
       setStatus("error")
     }
-  }, [apply])
+  }, [apply, spaceId])
 
   useEffect(() => {
     const mem = memoryTimers.current
@@ -103,7 +106,7 @@ export function useSky(initialState: AppState) {
         memories: [...current.memories, optimistic],
       }))
       try {
-        const next = await requestState("/api/memories", {
+        const next = await requestState(spaceId, "/api/memories", {
           method: "POST",
           body: JSON.stringify({ ...input, ...position }),
         })
@@ -114,7 +117,7 @@ export function useSky(initialState: AppState) {
         throw error
       }
     },
-    [apply, load, state.categories, state.memories],
+    [apply, load, spaceId, state.categories, state.memories],
   )
 
   const updateMemory = useCallback(
@@ -148,7 +151,7 @@ export function useSky(initialState: AppState) {
         ),
       }))
       try {
-        const next = await requestState(`/api/memories/${id}`, {
+        const next = await requestState(spaceId, `/api/memories/${id}`, {
           method: "PATCH",
           body: JSON.stringify(fullPatch),
         })
@@ -159,7 +162,7 @@ export function useSky(initialState: AppState) {
         throw error
       }
     },
-    [apply, load, state.categories, state.memories],
+    [apply, load, spaceId, state.categories, state.memories],
   )
 
   const moveMemory = useCallback(
@@ -176,7 +179,7 @@ export function useSky(initialState: AppState) {
         memoryTimers.current.delete(id)
         void (async () => {
           try {
-            const next = await requestState(`/api/memories/${id}`, {
+            const next = await requestState(spaceId, `/api/memories/${id}`, {
               method: "PATCH",
               body: JSON.stringify({ x, y }),
             })
@@ -189,7 +192,7 @@ export function useSky(initialState: AppState) {
       }, 380)
       memoryTimers.current.set(id, timer)
     },
-    [apply, load],
+    [apply, load, spaceId],
   )
 
   const moveCategory = useCallback(
@@ -217,7 +220,7 @@ export function useSky(initialState: AppState) {
         categoryTimers.current.delete(id)
         void (async () => {
           try {
-            const next = await requestState(`/api/categories/${id}`, {
+            const next = await requestState(spaceId, `/api/categories/${id}`, {
               method: "PATCH",
               body: JSON.stringify({ x, y }),
             })
@@ -230,7 +233,7 @@ export function useSky(initialState: AppState) {
       }, 380)
       categoryTimers.current.set(id, timer)
     },
-    [apply, load],
+    [apply, load, spaceId],
   )
 
   const deleteMemory = useCallback(
@@ -240,7 +243,7 @@ export function useSky(initialState: AppState) {
         memories: current.memories.filter((memory) => memory.id !== id),
       }))
       try {
-        const next = await requestState(`/api/memories/${id}`, {
+        const next = await requestState(spaceId, `/api/memories/${id}`, {
           method: "DELETE",
         })
         apply(next)
@@ -250,13 +253,13 @@ export function useSky(initialState: AppState) {
         throw error
       }
     },
-    [apply, load],
+    [apply, load, spaceId],
   )
 
   const createCategory = useCallback(
     async (input: { name: string; color: string }) => {
       try {
-        const next = await requestState("/api/categories", {
+        const next = await requestState(spaceId, "/api/categories", {
           method: "POST",
           body: JSON.stringify(input),
         })
@@ -266,7 +269,7 @@ export function useSky(initialState: AppState) {
         throw error
       }
     },
-    [apply],
+    [apply, spaceId],
   )
 
   const updateCategory = useCallback(
@@ -278,7 +281,7 @@ export function useSky(initialState: AppState) {
         ),
       }))
       try {
-        const next = await requestState(`/api/categories/${id}`, {
+        const next = await requestState(spaceId, `/api/categories/${id}`, {
           method: "PATCH",
           body: JSON.stringify(patch),
         })
@@ -289,13 +292,13 @@ export function useSky(initialState: AppState) {
         throw error
       }
     },
-    [apply, load],
+    [apply, load, spaceId],
   )
 
   const deleteCategory = useCallback(
     async (id: string) => {
       try {
-        const next = await requestState(`/api/categories/${id}`, {
+        const next = await requestState(spaceId, `/api/categories/${id}`, {
           method: "DELETE",
         })
         apply(next)
@@ -304,7 +307,7 @@ export function useSky(initialState: AppState) {
         throw error
       }
     },
-    [apply],
+    [apply, spaceId],
   )
 
   return {

@@ -1,3 +1,4 @@
+import { requireSpaceId } from "@/lib/space"
 import { mutateState } from "@/lib/store"
 import {
   asRecord,
@@ -24,7 +25,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     const categoryId =
       typeof body.categoryId === "string" ? body.categoryId : undefined
 
-    const state = await mutateState((current) => {
+    const spaceId = requireSpaceId(request)
+    const state = await mutateState(spaceId, (current) => {
       const memory = requireMemory(current.memories, id)
       if (categoryId) requireCategory(current.categories, categoryId)
       if (title !== undefined) memory.title = title
@@ -42,10 +44,11 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params
-    const state = await mutateState((current) => {
+    const spaceId = requireSpaceId(request)
+    const state = await mutateState(spaceId, (current) => {
       requireMemory(current.memories, id)
       current.memories = current.memories.filter((memory) => memory.id !== id)
       return current

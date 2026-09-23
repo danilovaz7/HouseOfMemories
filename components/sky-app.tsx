@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { CloudOff, RefreshCw } from "lucide-react"
 
 import { CategoryManager } from "@/components/category-manager"
+import { copySpaceLink } from "@/components/space-welcome"
 import {
   MemorySheet,
   memoryToDraft,
@@ -17,9 +18,15 @@ import { useSky } from "@/hooks/use-sky"
 import { findMemoryPositionNearCategory } from "@/lib/layout"
 import type { AppState } from "@/lib/types"
 
-export function SkyApp({ initialState }: { initialState: AppState }) {
+export function SkyApp({
+  spaceId,
+  initialState,
+}: {
+  spaceId: string
+  initialState: AppState
+}) {
   const isMobile = useIsMobile()
-  const sky = useSky(initialState)
+  const sky = useSky(spaceId, initialState)
   const [filter, setFilter] = useState<string | "all">("all")
   const [sheetOpen, setSheetOpen] = useState(false)
   const [typesOpen, setTypesOpen] = useState(false)
@@ -101,6 +108,7 @@ export function SkyApp({ initialState }: { initialState: AppState }) {
         onFilter={setFilter}
         onAdd={openCreate}
         onManageTypes={() => setTypesOpen(true)}
+        onCopyLink={() => copySpaceLink(spaceId)}
       />
 
       {sky.status === "error" ? (

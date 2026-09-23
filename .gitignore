@@ -42,3 +42,4 @@ next-env.d.ts
 
 # store temp files
 data/*.tmp
+/data/spaces/

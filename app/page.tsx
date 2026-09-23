@@ -1,9 +1,5 @@
-import { SkyApp } from "@/components/sky-app"
-import { getState } from "@/lib/store"
+import { SpaceShell } from "@/components/space-shell"
 
-export const dynamic = "force-dynamic"
-
-export default async function Home() {
-  const initialState = await getState()
-  return <SkyApp initialState={initialState} />
+export default function Home() {
+  return <SpaceShell />
 }

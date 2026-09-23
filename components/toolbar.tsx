@@ -1,6 +1,6 @@
 "use client"
 
-import { Cloud, Plus, Tags } from "lucide-react"
+import { Cloud, Link2, Plus, Tags } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import type { Category } from "@/lib/types"
@@ -12,6 +12,7 @@ type ToolbarProps = {
   onFilter: (id: string | "all") => void
   onAdd: () => void
   onManageTypes: () => void
+  onCopyLink: () => void
 }
 
 export function Toolbar({
@@ -20,6 +21,7 @@ export function Toolbar({
   onFilter,
   onAdd,
   onManageTypes,
+  onCopyLink,
 }: ToolbarProps) {
   return (
     <div className="pointer-events-none fixed inset-x-0 top-4 z-40 flex justify-center px-3 max-md:top-auto max-md:bottom-4">
@@ -47,6 +49,16 @@ export function Toolbar({
           >
             <Tags data-icon="inline-start" />
             Tipos
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="rounded-full text-slate-700 hover:bg-white/70 max-sm:px-2"
+            onClick={onCopyLink}
+            title="Copiar link do seu céu privado"
+          >
+            <Link2 data-icon="inline-start" />
+            <span className="max-sm:sr-only">Copiar link</span>
           </Button>
         </div>
         <div className="flex max-w-full items-center gap-1.5 overflow-x-auto rounded-full border border-white/50 bg-white/45 p-1 shadow-[0_10px_30px_-20px_rgba(30,80,140,0.5)] backdrop-blur-lg">

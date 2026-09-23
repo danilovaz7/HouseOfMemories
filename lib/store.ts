@@ -4,10 +4,8 @@ import path from "node:path"
 import { Redis } from "@upstash/redis"
 
 import { ensureCategoryPositions } from "@/lib/layout"
+import { storageKeyForSpace } from "@/lib/space"
 import type { AppState, Category, Memory } from "@/lib/types"
-
-const KV_STATE_KEY = "house-of-memories:state"
-const SEED_PATH = path.join(process.cwd(), "data", "memories.json")
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "faculdade", name: "Faculdade", color: "#f59e0b", x: 0.26, y: 0.38 },
@@ -16,59 +14,24 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: "pessoal", name: "Pessoal", color: "#c084fc", x: 0.48, y: 0.78 },
 ]
 
-const DEFAULT_STATE: AppState = {
-  categories: DEFAULT_CATEGORIES,
-  memories: [
-    {
-      id: "seed-calculo",
-      title: "Entregar o trabalho de cálculo",
-      notes: "Lista 4, até sexta. Revisar os exercícios de integrais.",
-      categoryId: "faculdade",
-      x: 0.16,
-      y: 0.3,
-      createdAt: "2026-09-10T12:00:00.000Z",
-      updatedAt: "2026-09-10T12:00:00.000Z",
-    },
-    {
-      id: "seed-dentista",
-      title: "Ligar para o dentista",
-      notes: "Remarcar a limpeza que ficou pendente no mês passado.",
-      categoryId: "pendencias",
-      x: 0.84,
-      y: 0.28,
-      createdAt: "2026-09-11T12:00:00.000Z",
-      updatedAt: "2026-09-11T12:00:00.000Z",
-    },
-    {
-      id: "seed-cafe",
-      title: "Comprar café e leite",
-      notes: "Acabou o café do filtro. Pegar o leite integral também.",
-      categoryId: "afazeres",
-      x: 0.42,
-      y: 0.48,
-      createdAt: "2026-09-12T12:00:00.000Z",
-      updatedAt: "2026-09-12T12:00:00.000Z",
-    },
-    {
-      id: "seed-aniversario",
-      title: "Aniversário da Maria no sábado",
-      notes: "Presente ainda em aberto. Ela mencionou aquele livro.",
-      categoryId: "pessoal",
-      x: 0.58,
-      y: 0.7,
-      createdAt: "2026-09-13T12:00:00.000Z",
-      updatedAt: "2026-09-13T12:00:00.000Z",
-    },
-  ],
+export function createInitialState(): AppState {
+  return {
+    categories: structuredClone(DEFAULT_CATEGORIES),
+    memories: [],
+  }
 }
 
-let chain: Promise<unknown> = Promise.resolve()
+const chains = new Map<string, Promise<unknown>>()
 
-function enqueue<T>(fn: () => Promise<T>): Promise<T> {
-  const next = chain.then(fn, fn)
-  chain = next.then(
-    () => undefined,
-    () => undefined,
+function enqueue<T>(spaceId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = chains.get(spaceId) ?? Promise.resolve()
+  const next = prev.then(fn, fn)
+  chains.set(
+    spaceId,
+    next.then(
+      () => undefined,
+      () => undefined,
+    ),
   )
   return next
 }
@@ -94,12 +57,12 @@ function hasKvStore() {
   return getRedis() !== null
 }
 
-function writableFilePath() {
+function writableFilePath(spaceId: string) {
   if (hasKvStore()) return null
   if (isVercelRuntime()) {
-    return path.join("/tmp", "house-of-memories-state.json")
+    return path.join("/tmp", `house-of-memories-${spaceId}.json`)
   }
-  return path.join(process.cwd(), "data", "memories.json")
+  return path.join(process.cwd(), "data", "spaces", `${spaceId}.json`)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -141,7 +104,7 @@ function isValidMemory(value: unknown): value is Memory {
 }
 
 function normalizeState(value: unknown): AppState {
-  if (!isRecord(value)) return structuredClone(DEFAULT_STATE)
+  if (!isRecord(value)) return createInitialState()
 
   const rawCategories = Array.isArray(value.categories)
     ? value.categories.map(readCategory).filter((item): item is Category => item !== null)
@@ -151,32 +114,23 @@ function normalizeState(value: unknown): AppState {
     : []
 
   if (rawCategories.length === 0) {
-    return structuredClone(DEFAULT_STATE)
+    return createInitialState()
   }
 
   const categories = ensureCategoryPositions(rawCategories, memories)
   return { categories, memories }
 }
 
-async function loadSeedState(): Promise<AppState> {
-  try {
-    const raw = await fs.readFile(SEED_PATH, "utf8")
-    return normalizeState(JSON.parse(raw))
-  } catch {
-    return structuredClone(DEFAULT_STATE)
-  }
-}
-
-async function readFromKv(): Promise<AppState | null> {
+async function readFromKv(spaceId: string): Promise<AppState | null> {
   const redis = getRedis()
   if (!redis) return null
-  const value = await redis.get<AppState>(KV_STATE_KEY)
+  const value = await redis.get<AppState>(storageKeyForSpace(spaceId))
   if (!value) return null
   return normalizeState(value)
 }
 
-async function readFromFile(): Promise<AppState | null> {
-  const filePath = writableFilePath()
+async function readFromFile(spaceId: string): Promise<AppState | null> {
+  const filePath = writableFilePath(spaceId)
   if (!filePath) return null
   try {
     const raw = await fs.readFile(filePath, "utf8")
@@ -186,29 +140,29 @@ async function readFromFile(): Promise<AppState | null> {
   }
 }
 
-async function readFromDisk(): Promise<AppState> {
-  const fromKv = await readFromKv()
+async function readFromDisk(spaceId: string): Promise<AppState> {
+  const fromKv = await readFromKv(spaceId)
   if (fromKv) return fromKv
 
-  const fromFile = await readFromFile()
+  const fromFile = await readFromFile(spaceId)
   if (fromFile) return fromFile
 
-  const initial = await loadSeedState()
-  await writeToDisk(initial)
+  const initial = createInitialState()
+  await writeToDisk(spaceId, initial)
   return initial
 }
 
-async function writeToDisk(state: AppState): Promise<void> {
+async function writeToDisk(spaceId: string, state: AppState): Promise<void> {
   const normalized = normalizeState(state)
   const payload = `${JSON.stringify(normalized, null, 2)}\n`
 
   const redis = getRedis()
   if (redis) {
-    await redis.set(KV_STATE_KEY, normalized)
+    await redis.set(storageKeyForSpace(spaceId), normalized)
     return
   }
 
-  const filePath = writableFilePath()
+  const filePath = writableFilePath(spaceId)
   if (!filePath) {
     throw new Error("Nenhum armazenamento gravável configurado.")
   }
@@ -225,25 +179,36 @@ async function writeToDisk(state: AppState): Promise<void> {
   await fs.rename(tmp, filePath)
 }
 
-export function getState(): Promise<AppState> {
-  return enqueue(async () => structuredClone(await readFromDisk()))
+export function getState(spaceId: string): Promise<AppState> {
+  return enqueue(spaceId, async () => structuredClone(await readFromDisk(spaceId)))
+}
+
+export function createSpaceState(spaceId: string): Promise<AppState> {
+  return enqueue(spaceId, async () => {
+    const existing = (await readFromKv(spaceId)) ?? (await readFromFile(spaceId))
+    if (existing) return structuredClone(existing)
+    const initial = createInitialState()
+    await writeToDisk(spaceId, initial)
+    return structuredClone(initial)
+  })
 }
 
 export function mutateState(
+  spaceId: string,
   mutator: (state: AppState) => AppState,
 ): Promise<AppState> {
-  return enqueue(async () => {
-    const current = await readFromDisk()
+  return enqueue(spaceId, async () => {
+    const current = await readFromDisk(spaceId)
     const next = normalizeState(mutator(structuredClone(current)))
-    await writeToDisk(next)
+    await writeToDisk(spaceId, next)
     return structuredClone(next)
   })
 }
 
-export function putState(state: AppState): Promise<AppState> {
-  return enqueue(async () => {
+export function putState(spaceId: string, state: AppState): Promise<AppState> {
+  return enqueue(spaceId, async () => {
     const next = normalizeState(state)
-    await writeToDisk(next)
+    await writeToDisk(spaceId, next)
     return structuredClone(next)
   })
 }
