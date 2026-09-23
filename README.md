@@ -15,10 +15,11 @@ Abra [http://localhost:4317](http://localhost:4317).
 
 ## Como usar
 
-- **Nova lembrança** na barra, ou clique num vazio do céu, para soltar um balão.
-- **Arraste** os balões com o mouse ou o dedo. A posição é salva no servidor.
-- **Clique** num balão para editar título, notas, tipo ou apagar.
-- Filtre pelos **tipos** na barra. Os outros balões ficam mais suaves.
+- Cada **tipo** aparece como um **balão central** no céu; as **tarefas** são nuvens menores ligadas a ele por linhas (estilo brainstorm).
+- **Clique** no balão do tipo para criar uma nuvem ligada a ele, ou use **Nova lembrança** na barra.
+- **Arraste** o balão do tipo para mover o ramo inteiro; arraste uma nuvem só para reposicionar aquela tarefa.
+- **Clique** numa nuvem para editar título, notas, tipo ou apagar.
+- Filtre pelos **tipos** na barra. Os outros ramos ficam mais suaves.
 - Em **Tipos**, crie, pinte, renomeie ou apague categorias.
 
 ## Persistência

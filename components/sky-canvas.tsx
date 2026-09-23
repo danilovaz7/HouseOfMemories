@@ -2,33 +2,42 @@
 
 import { useRef, useState } from "react"
 
+import { BrainstormLinks } from "@/components/brainstorm-links"
+import { CategoryBalloon } from "@/components/category-balloon"
 import { MemoryBalloon } from "@/components/memory-balloon"
 import { SkyBackdrop } from "@/components/sky-backdrop"
+import { clampRelative } from "@/lib/layout"
 import type { Category, Memory } from "@/lib/types"
 
 type SkyCanvasProps = {
   memories: Memory[]
   categories: Category[]
   activeCategoryId: string | "all"
-  onMove: (id: string, x: number, y: number) => void
-  onOpen: (id: string) => void
-  onCreateAt: (x: number, y: number) => void
+  onMoveMemory: (id: string, x: number, y: number) => void
+  onMoveCategory: (id: string, x: number, y: number) => void
+  onOpenMemory: (id: string) => void
+  onOpenCategory: (id: string) => void
 }
 
 const DRAG_THRESHOLD = 6
+
+type DragTarget =
+  | { kind: "memory"; id: string }
+  | { kind: "category"; id: string }
 
 export function SkyCanvas({
   memories,
   categories,
   activeCategoryId,
-  onMove,
-  onOpen,
-  onCreateAt,
+  onMoveMemory,
+  onMoveCategory,
+  onOpenMemory,
+  onOpenCategory,
 }: SkyCanvasProps) {
   const skyRef = useRef<HTMLDivElement>(null)
-  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dragging, setDragging] = useState<DragTarget | null>(null)
   const dragRef = useRef<{
-    id: string
+    target: DragTarget
     startX: number
     startY: number
     moved: boolean
@@ -38,21 +47,21 @@ export function SkyCanvas({
   function clientToRelative(clientX: number, clientY: number) {
     const rect = skyRef.current?.getBoundingClientRect()
     if (!rect) return { x: 0.5, y: 0.42 }
-    return {
-      x: Math.min(0.94, Math.max(0.06, (clientX - rect.left) / rect.width)),
-      y: Math.min(0.88, Math.max(0.1, (clientY - rect.top) / rect.height)),
-    }
+    return clampRelative(
+      (clientX - rect.left) / rect.width,
+      (clientY - rect.top) / rect.height,
+    )
   }
 
-  function onBalloonPointerDown(
+  function startDrag(
     event: React.PointerEvent<HTMLButtonElement>,
-    memory: Memory,
+    target: DragTarget,
   ) {
     event.preventDefault()
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
     dragRef.current = {
-      id: memory.id,
+      target,
       startX: event.clientX,
       startY: event.clientY,
       moved: false,
@@ -69,9 +78,13 @@ export function SkyCanvas({
     )
     if (!drag.moved && distance < DRAG_THRESHOLD) return
     drag.moved = true
-    setDraggingId(drag.id)
+    setDragging(drag.target)
     const next = clientToRelative(event.clientX, event.clientY)
-    onMove(drag.id, next.x, next.y)
+    if (drag.target.kind === "memory") {
+      onMoveMemory(drag.target.id, next.x, next.y)
+    } else {
+      onMoveCategory(drag.target.id, next.x, next.y)
+    }
   }
 
   function endDrag(event: React.PointerEvent<HTMLDivElement>) {
@@ -79,20 +92,20 @@ export function SkyCanvas({
     if (!drag) return
     if (event.pointerId !== drag.pointerId) return
     dragRef.current = null
-    setDraggingId(null)
+    setDragging(null)
     if (!drag.moved) {
-      onOpen(drag.id)
+      if (drag.target.kind === "memory") {
+        onOpenMemory(drag.target.id)
+      } else {
+        onOpenCategory(drag.target.id)
+      }
     }
   }
 
-  function onSkyPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (event.target !== event.currentTarget) return
-    if (event.button !== 0 && event.pointerType === "mouse") return
-    const { x, y } = clientToRelative(event.clientX, event.clientY)
-    onCreateAt(x, y)
+  const counts = new Map<string, number>()
+  for (const memory of memories) {
+    counts.set(memory.categoryId, (counts.get(memory.categoryId) ?? 0) + 1)
   }
-
-  const categoryById = new Map(categories.map((category) => [category.id, category]))
 
   return (
     <div
@@ -101,21 +114,49 @@ export function SkyCanvas({
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
-      onPointerDown={onSkyPointerDown}
     >
       <SkyBackdrop />
-      {memories.map((memory) => (
-        <MemoryBalloon
-          key={memory.id}
-          memory={memory}
-          category={categoryById.get(memory.categoryId)}
+      <BrainstormLinks
+        categories={categories}
+        memories={memories}
+        activeCategoryId={activeCategoryId}
+      />
+      {categories.map((category) => (
+        <CategoryBalloon
+          key={category.id}
+          category={category}
+          memoryCount={counts.get(category.id) ?? 0}
           dimmed={
-            activeCategoryId !== "all" && memory.categoryId !== activeCategoryId
+            activeCategoryId !== "all" && category.id !== activeCategoryId
           }
-          dragging={draggingId === memory.id}
-          onPointerDown={(event) => onBalloonPointerDown(event, memory)}
+          dragging={
+            dragging?.kind === "category" && dragging.id === category.id
+          }
+          onPointerDown={(event) =>
+            startDrag(event, { kind: "category", id: category.id })
+          }
         />
       ))}
+      {memories.map((memory) => {
+        const category = categories.find((item) => item.id === memory.categoryId)
+        return (
+          <MemoryBalloon
+            key={memory.id}
+            memory={memory}
+            category={category}
+            dimmed={
+              activeCategoryId !== "all" &&
+              memory.categoryId !== activeCategoryId
+            }
+            dragging={
+              dragging?.kind === "memory" && dragging.id === memory.id
+            }
+            onPointerDown={(event) =>
+              startDrag(event, { kind: "memory", id: memory.id })
+            }
+          />
+        )
+      })}
     </div>
   )
 }

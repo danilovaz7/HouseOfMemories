@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
-import { findFreePosition } from "@/lib/layout"
+import {
+  findFreePosition,
+  findMemoryPositionNearCategory,
+} from "@/lib/layout"
 import type { AppState, Category, Memory } from "@/lib/types"
 
 type Status = "ready" | "error"
@@ -38,7 +41,8 @@ async function requestState(
 export function useSky(initialState: AppState) {
   const [state, setState] = useState<AppState>(initialState)
   const [status, setStatus] = useState<Status>("ready")
-  const timers = useRef(new Map<string, number>())
+  const memoryTimers = useRef(new Map<string, number>())
+  const categoryTimers = useRef(new Map<string, number>())
 
   const apply = useCallback((next: AppState) => {
     setState(next)
@@ -55,9 +59,11 @@ export function useSky(initialState: AppState) {
   }, [apply])
 
   useEffect(() => {
-    const activeTimers = timers.current
+    const mem = memoryTimers.current
+    const cat = categoryTimers.current
     return () => {
-      activeTimers.forEach((timer) => window.clearTimeout(timer))
+      mem.forEach((timer) => window.clearTimeout(timer))
+      cat.forEach((timer) => window.clearTimeout(timer))
     }
   }, [])
 
@@ -69,10 +75,13 @@ export function useSky(initialState: AppState) {
       x?: number
       y?: number
     }) => {
+      const category = state.categories.find((item) => item.id === input.categoryId)
       const position =
         input.x !== undefined && input.y !== undefined
           ? { x: input.x, y: input.y }
-          : findFreePosition(state.memories)
+          : category
+            ? findMemoryPositionNearCategory(category, state.memories)
+            : findFreePosition(state.memories)
       const optimistic: Memory = {
         id: `tmp-${crypto.randomUUID()}`,
         title: input.title,
@@ -99,7 +108,7 @@ export function useSky(initialState: AppState) {
         throw error
       }
     },
-    [apply, load, state.memories],
+    [apply, load, state.categories, state.memories],
   )
 
   const updateMemory = useCallback(
@@ -107,18 +116,35 @@ export function useSky(initialState: AppState) {
       id: string,
       patch: Partial<Pick<Memory, "title" | "notes" | "categoryId" | "x" | "y">>,
     ) => {
+      const memory = state.memories.find((item) => item.id === id)
+      let fullPatch = { ...patch }
+      if (
+        memory &&
+        patch.categoryId &&
+        patch.categoryId !== memory.categoryId &&
+        patch.x === undefined &&
+        patch.y === undefined
+      ) {
+        const hub = state.categories.find(
+          (category) => category.id === patch.categoryId,
+        )
+        if (hub) {
+          const spot = findMemoryPositionNearCategory(hub, state.memories)
+          fullPatch = { ...fullPatch, x: spot.x, y: spot.y }
+        }
+      }
       setState((current) => ({
         ...current,
-        memories: current.memories.map((memory) =>
-          memory.id === id
-            ? { ...memory, ...patch, updatedAt: new Date().toISOString() }
-            : memory,
+        memories: current.memories.map((item) =>
+          item.id === id
+            ? { ...item, ...fullPatch, updatedAt: new Date().toISOString() }
+            : item,
         ),
       }))
       try {
         const next = await requestState(`/api/memories/${id}`, {
           method: "PATCH",
-          body: JSON.stringify(patch),
+          body: JSON.stringify(fullPatch),
         })
         apply(next)
       } catch (error) {
@@ -127,7 +153,7 @@ export function useSky(initialState: AppState) {
         throw error
       }
     },
-    [apply, load],
+    [apply, load, state.categories, state.memories],
   )
 
   const moveMemory = useCallback(
@@ -138,10 +164,10 @@ export function useSky(initialState: AppState) {
           memory.id === id ? { ...memory, x, y } : memory,
         ),
       }))
-      const existing = timers.current.get(id)
+      const existing = memoryTimers.current.get(id)
       if (existing) window.clearTimeout(existing)
       const timer = window.setTimeout(() => {
-        timers.current.delete(id)
+        memoryTimers.current.delete(id)
         void (async () => {
           try {
             const next = await requestState(`/api/memories/${id}`, {
@@ -155,7 +181,48 @@ export function useSky(initialState: AppState) {
           }
         })()
       }, 380)
-      timers.current.set(id, timer)
+      memoryTimers.current.set(id, timer)
+    },
+    [apply, load],
+  )
+
+  const moveCategory = useCallback(
+    (id: string, x: number, y: number) => {
+      setState((current) => {
+        const category = current.categories.find((item) => item.id === id)
+        if (!category) return current
+        const dx = x - category.x
+        const dy = y - category.y
+        return {
+          ...current,
+          categories: current.categories.map((item) =>
+            item.id === id ? { ...item, x, y } : item,
+          ),
+          memories: current.memories.map((memory) =>
+            memory.categoryId === id
+              ? { ...memory, x: memory.x + dx, y: memory.y + dy }
+              : memory,
+          ),
+        }
+      })
+      const existing = categoryTimers.current.get(id)
+      if (existing) window.clearTimeout(existing)
+      const timer = window.setTimeout(() => {
+        categoryTimers.current.delete(id)
+        void (async () => {
+          try {
+            const next = await requestState(`/api/categories/${id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ x, y }),
+            })
+            apply(next)
+          } catch {
+            toast.error("Não deu para mover o ramo. Tentando de novo…")
+            void load()
+          }
+        })()
+      }, 380)
+      categoryTimers.current.set(id, timer)
     },
     [apply, load],
   )
@@ -241,6 +308,7 @@ export function useSky(initialState: AppState) {
     createMemory,
     updateMemory,
     moveMemory,
+    moveCategory,
     deleteMemory,
     createCategory,
     updateCategory,

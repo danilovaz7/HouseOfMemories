@@ -1,10 +1,11 @@
-import { mutateState } from "@/lib/store"
+import { moveCategoryCluster, mutateState } from "@/lib/store"
 import {
   ApiError,
   asRecord,
   jsonError,
   parseColor,
   parseName,
+  parsePosition,
 } from "@/lib/validation"
 
 export const runtime = "nodejs"
@@ -18,12 +19,16 @@ export async function PATCH(request: Request, context: RouteContext) {
     const body = asRecord(await request.json())
     const name = parseName(body, false)
     const color = parseColor(body, false)
+    const { x, y } = parsePosition(body)
 
     const state = await mutateState((current) => {
       const category = current.categories.find((item) => item.id === id)
       if (!category) throw new ApiError(404, "Tipo não encontrado.")
       if (name) category.name = name
       if (color) category.color = color
+      if (x !== undefined && y !== undefined) {
+        moveCategoryCluster(current, id, x, y)
+      }
       return current
     })
 

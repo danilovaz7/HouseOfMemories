@@ -122,8 +122,8 @@ function MemoryForm({
           {isEditing ? "Abrir lembrança" : "Soltar uma lembrança"}
         </SheetTitle>
         <SheetDescription>
-          Escreva o que você não quer esquecer que existe. Depois arraste o
-          balão para o lugar certo no céu.
+          Escreva o que você não quer esquecer. A nuvem fica ligada ao balão
+          do tipo escolhido — arraste para organizar o brainstorm.
         </SheetDescription>
       </SheetHeader>
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4">

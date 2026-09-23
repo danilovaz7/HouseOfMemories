@@ -13,7 +13,7 @@ import { SkyCanvas } from "@/components/sky-canvas"
 import { Toolbar } from "@/components/toolbar"
 import { Button } from "@/components/ui/button"
 import { useSky } from "@/hooks/use-sky"
-import { findFreePosition } from "@/lib/layout"
+import { findMemoryPositionNearCategory } from "@/lib/layout"
 import type { AppState } from "@/lib/types"
 
 export function SkyApp({ initialState }: { initialState: AppState }) {
@@ -31,21 +31,28 @@ export function SkyApp({ initialState }: { initialState: AppState }) {
     return memories.filter((memory) => memory.categoryId === filter).length
   }, [filter, memories])
 
-  function openCreate(position?: { x: number; y: number }) {
-    const fallback = categories[0]
-    if (!fallback) {
-      setTypesOpen(true)
-      return
-    }
-    const spot = position ?? findFreePosition(memories)
+  function openCreateForCategory(categoryId: string) {
+    const category = categories.find((item) => item.id === categoryId)
+    if (!category) return
+    const spot = findMemoryPositionNearCategory(category, memories)
     setDraft({
       title: "",
       notes: "",
-      categoryId: filter === "all" ? fallback.id : filter,
+      categoryId,
       x: spot.x,
       y: spot.y,
     })
     setSheetOpen(true)
+  }
+
+  function openCreate() {
+    const categoryId =
+      filter === "all" ? categories[0]?.id : filter
+    if (!categoryId) {
+      setTypesOpen(true)
+      return
+    }
+    openCreateForCategory(categoryId)
   }
 
   function openExisting(id: string) {
@@ -79,16 +86,17 @@ export function SkyApp({ initialState }: { initialState: AppState }) {
         memories={memories}
         categories={categories}
         activeCategoryId={filter}
-        onMove={sky.moveMemory}
-        onOpen={openExisting}
-        onCreateAt={(x, y) => openCreate({ x, y })}
+        onMoveMemory={sky.moveMemory}
+        onMoveCategory={sky.moveCategory}
+        onOpenMemory={openExisting}
+        onOpenCategory={openCreateForCategory}
       />
 
       <Toolbar
         categories={categories}
         activeCategoryId={filter}
         onFilter={setFilter}
-        onAdd={() => openCreate()}
+        onAdd={openCreate}
         onManageTypes={() => setTypesOpen(true)}
       />
 
@@ -109,26 +117,25 @@ export function SkyApp({ initialState }: { initialState: AppState }) {
         <StatusCard className="pointer-events-none">
           <p className="font-heading text-lg font-semibold">Céu calmo</p>
           <p className="max-w-xs text-sm text-slate-600">
-            Solte a primeira lembrança neste céu. Clique no vazio ou use o botão
-            acima para um novo balão.
+            Clique em um balão de tipo para soltar a primeira nuvem de tarefa,
+            ou use Nova lembrança na barra.
           </p>
         </StatusCard>
       ) : null}
 
-      {memories.length > 0 && matchCount === 0 ? (
+      {memories.length > 0 && matchCount === 0 && filter !== "all" ? (
         <StatusCard className="pointer-events-none">
           <p className="font-heading text-sm font-semibold">
-            Nada neste tipo por enquanto
+            Nenhuma nuvem neste tipo
           </p>
           <p className="text-xs text-slate-600">
-            Os outros balões ficam mais suaves. Solte uma nova lembrança neste
-            tipo ou volte para Todos.
+            Clique no balão do tipo para adicionar uma tarefa ligada a ele.
           </p>
         </StatusCard>
       ) : null}
 
       <p className="pointer-events-none fixed bottom-4 left-1/2 z-30 hidden -translate-x-1/2 text-xs text-slate-600/80 md:block max-md:hidden">
-        Arraste os balões. Clique no céu para soltar uma lembrança.
+        Arraste o balão do tipo ou as nuvens. Clique no tipo para nova tarefa.
       </p>
 
       <MemorySheet

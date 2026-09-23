@@ -1,9 +1,40 @@
 {
   "categories": [
-    { "id": "faculdade", "name": "Faculdade", "color": "#f59e0b" },
-    { "id": "afazeres", "name": "A fazeres", "color": "#38bdf8" },
-    { "id": "pendencias", "name": "Pendências", "color": "#fb7185" },
-    { "id": "pessoal", "name": "Pessoal", "color": "#c084fc" }
+    {
+      "id": "faculdade",
+      "name": "Faculdade",
+      "color": "#f59e0b",
+      "x": 0.2824956672443674,
+      "y": 0.38662486938349006
+    },
+    {
+      "id": "afazeres",
+      "name": "A fazeres",
+      "color": "#38bdf8",
+      "x": 0.48,
+      "y": 0.52
+    },
+    {
+      "id": "pendencias",
+      "name": "Pendências",
+      "color": "#fb7185",
+      "x": 0.68,
+      "y": 0.28
+    },
+    {
+      "id": "pessoal",
+      "name": "Pessoal",
+      "color": "#c084fc",
+      "x": 0.74,
+      "y": 0.58
+    },
+    {
+      "id": "5c0b4c42-7f60-4d59-b95e-1821083ec4b2",
+      "name": "Trabalho",
+      "color": "#22d3ee",
+      "x": 0.2902946273830156,
+      "y": 0.5402298850574713
+    }
   ],
   "memories": [
     {
@@ -11,40 +42,49 @@
       "title": "Entregar o trabalho de cálculo",
       "notes": "Lista 4, até sexta. Revisar os exercícios de integrais.",
       "categoryId": "faculdade",
-      "x": 0.22,
-      "y": 0.34,
+      "x": 0.15251299826689774,
+      "y": 0.2309299895506792,
       "createdAt": "2026-09-10T12:00:00.000Z",
-      "updatedAt": "2026-09-10T12:00:00.000Z"
+      "updatedAt": "2026-09-23T21:35:10.207Z"
     },
     {
       "id": "seed-dentista",
       "title": "Ligar para o dentista",
       "notes": "Remarcar a limpeza que ficou pendente no mês passado.",
       "categoryId": "pendencias",
-      "x": 0.68,
-      "y": 0.28,
+      "x": 0.8908145580589255,
+      "y": 0.22884012539184953,
       "createdAt": "2026-09-11T12:00:00.000Z",
-      "updatedAt": "2026-09-11T12:00:00.000Z"
+      "updatedAt": "2026-09-23T21:35:14.221Z"
     },
     {
       "id": "seed-cafe",
       "title": "Comprar café e leite",
       "notes": "Acabou o café do filtro. Pegar o leite integral também.",
       "categoryId": "afazeres",
-      "x": 0.48,
-      "y": 0.52,
+      "x": 0.5095320623916811,
+      "y": 0.6551724137931034,
       "createdAt": "2026-09-12T12:00:00.000Z",
-      "updatedAt": "2026-09-12T12:00:00.000Z"
+      "updatedAt": "2026-09-23T21:35:12.028Z"
     },
     {
       "id": "seed-aniversario",
       "title": "Aniversário da Maria no sábado",
       "notes": "Presente ainda em aberto. Ela mencionou aquele livro.",
       "categoryId": "pessoal",
-      "x": 0.74,
-      "y": 0.58,
+      "x": 0.8622183708838822,
+      "y": 0.49111807732497387,
       "createdAt": "2026-09-13T12:00:00.000Z",
-      "updatedAt": "2026-09-13T12:00:00.000Z"
+      "updatedAt": "2026-09-23T21:35:12.883Z"
+    },
+    {
+      "id": "6c85e189-419e-4d20-8af6-97191c131344",
+      "title": "Entreewgar relatorio 2",
+      "categoryId": "5c0b4c42-7f60-4d59-b95e-1821083ec4b2",
+      "x": 0.16464471403812825,
+      "y": 0.6342737722048067,
+      "createdAt": "2026-09-23T21:31:47.437Z",
+      "updatedAt": "2026-09-23T21:35:11.414Z"
     }
   ]
 }
