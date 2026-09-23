@@ -16,7 +16,7 @@ const fraunces = Fraunces({
 })
 
 export const metadata: Metadata = {
-  title: "Céu de Lembranças",
+  title: "House of Memories",
   description:
     "Um mapa mental no céu: solte balões do que você não quer esquecer que existe.",
 }

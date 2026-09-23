@@ -28,7 +28,7 @@ export function Toolbar({
           <div className="hidden items-center gap-2 pl-3 pr-1 sm:flex">
             <Cloud className="size-4 text-sky-700" />
             <span className="font-heading text-sm font-semibold tracking-tight text-slate-800">
-              Céu de Lembranças
+              House of Memories
             </span>
           </div>
           <Button
