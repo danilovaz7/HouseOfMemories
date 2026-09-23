@@ -74,13 +74,19 @@ export function useSky(initialState: AppState) {
       categoryId: string
       x?: number
       y?: number
+      compact?: boolean
     }) => {
       const category = state.categories.find((item) => item.id === input.categoryId)
       const position =
         input.x !== undefined && input.y !== undefined
           ? { x: input.x, y: input.y }
           : category
-            ? findMemoryPositionNearCategory(category, state.memories)
+            ? findMemoryPositionNearCategory(
+                category,
+                state.memories,
+                [],
+                input.compact,
+              )
             : findFreePosition(state.memories)
       const optimistic: Memory = {
         id: `tmp-${crypto.randomUUID()}`,

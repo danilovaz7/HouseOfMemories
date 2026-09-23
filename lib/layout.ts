@@ -67,12 +67,14 @@ export function findMemoryPositionNearCategory(
   category: Category,
   memories: Memory[],
   occupied: { x: number; y: number }[] = [],
+  compact = false,
 ) {
   const seed = hashSeed(category.id)
   const cluster = memories.filter((memory) => memory.categoryId === category.id)
   const baseAngle = (seed % 12) * (Math.PI / 6)
   for (let ring = 0; ring < 4; ring += 1) {
-    const radius = 0.1 + ring * 0.07 + cluster.length * 0.015
+    const radius =
+      (compact ? 0.07 : 0.1) + ring * (compact ? 0.05 : 0.07) + cluster.length * 0.012
     for (let step = 0; step < 8; step += 1) {
       const angle = baseAngle + step * (Math.PI / 4)
       const x = category.x + Math.cos(angle) * radius
@@ -98,7 +100,13 @@ export function findFreeCategoryHub(
   return findFreePosition(occupied)
 }
 
-export function clampRelative(x: number, y: number) {
+export function clampRelative(x: number, y: number, compact = false) {
+  if (compact) {
+    return {
+      x: Math.min(0.9, Math.max(0.1, x)),
+      y: Math.min(0.66, Math.max(0.12, y)),
+    }
+  }
   return {
     x: Math.min(0.92, Math.max(0.08, x)),
     y: Math.min(0.86, Math.max(0.14, y)),

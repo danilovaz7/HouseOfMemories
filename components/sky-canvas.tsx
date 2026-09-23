@@ -6,6 +6,7 @@ import { BrainstormLinks } from "@/components/brainstorm-links"
 import { CategoryBalloon } from "@/components/category-balloon"
 import { MemoryBalloon } from "@/components/memory-balloon"
 import { SkyBackdrop } from "@/components/sky-backdrop"
+import { useIsMobile } from "@/hooks/use-is-mobile"
 import { clampRelative } from "@/lib/layout"
 import type { Category, Memory } from "@/lib/types"
 
@@ -34,6 +35,7 @@ export function SkyCanvas({
   onOpenMemory,
   onOpenCategory,
 }: SkyCanvasProps) {
+  const isMobile = useIsMobile()
   const skyRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState<DragTarget | null>(null)
   const dragRef = useRef<{
@@ -50,6 +52,7 @@ export function SkyCanvas({
     return clampRelative(
       (clientX - rect.left) / rect.width,
       (clientY - rect.top) / rect.height,
+      isMobile,
     )
   }
 
@@ -107,6 +110,14 @@ export function SkyCanvas({
     counts.set(memory.categoryId, (counts.get(memory.categoryId) ?? 0) + 1)
   }
 
+  function isDimmed(categoryId: string) {
+    return activeCategoryId !== "all" && categoryId !== activeCategoryId
+  }
+
+  function hideOnMobile(categoryId: string) {
+    return isMobile && activeCategoryId !== "all" && categoryId !== activeCategoryId
+  }
+
   return (
     <div
       ref={skyRef}
@@ -115,48 +126,53 @@ export function SkyCanvas({
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
     >
-      <SkyBackdrop />
-      <BrainstormLinks
-        categories={categories}
-        memories={memories}
-        activeCategoryId={activeCategoryId}
-      />
-      {categories.map((category) => (
-        <CategoryBalloon
-          key={category.id}
-          category={category}
-          memoryCount={counts.get(category.id) ?? 0}
-          dimmed={
-            activeCategoryId !== "all" && category.id !== activeCategoryId
-          }
-          dragging={
-            dragging?.kind === "category" && dragging.id === category.id
-          }
-          onPointerDown={(event) =>
-            startDrag(event, { kind: "category", id: category.id })
-          }
+      <div className="absolute inset-x-0 top-0 bottom-0 max-md:bottom-[8.75rem]">
+        <SkyBackdrop />
+        <BrainstormLinks
+          categories={categories}
+          memories={memories.filter(
+            (memory) => !hideOnMobile(memory.categoryId),
+          )}
+          activeCategoryId={activeCategoryId}
         />
-      ))}
-      {memories.map((memory) => {
-        const category = categories.find((item) => item.id === memory.categoryId)
-        return (
-          <MemoryBalloon
-            key={memory.id}
-            memory={memory}
+        {categories.map((category) => (
+          <CategoryBalloon
+            key={category.id}
             category={category}
-            dimmed={
-              activeCategoryId !== "all" &&
-              memory.categoryId !== activeCategoryId
-            }
+            memoryCount={counts.get(category.id) ?? 0}
+            compact={isMobile}
+            dimmed={isDimmed(category.id)}
+            hiddenOnMobile={hideOnMobile(category.id)}
             dragging={
-              dragging?.kind === "memory" && dragging.id === memory.id
+              dragging?.kind === "category" && dragging.id === category.id
             }
             onPointerDown={(event) =>
-              startDrag(event, { kind: "memory", id: memory.id })
+              startDrag(event, { kind: "category", id: category.id })
             }
           />
-        )
-      })}
+        ))}
+        {memories.map((memory) => {
+          const category = categories.find(
+            (item) => item.id === memory.categoryId,
+          )
+          return (
+            <MemoryBalloon
+              key={memory.id}
+              memory={memory}
+              category={category}
+              compact={isMobile}
+              dimmed={isDimmed(memory.categoryId)}
+              hiddenOnMobile={hideOnMobile(memory.categoryId)}
+              dragging={
+                dragging?.kind === "memory" && dragging.id === memory.id
+              }
+              onPointerDown={(event) =>
+                startDrag(event, { kind: "memory", id: memory.id })
+              }
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }

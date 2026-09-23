@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils"
 type MemoryBalloonProps = {
   memory: Memory
   category?: Category
+  compact?: boolean
   dimmed?: boolean
+  hiddenOnMobile?: boolean
   dragging?: boolean
   onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void
 }
@@ -17,23 +19,27 @@ type MemoryBalloonProps = {
 export function MemoryBalloon({
   memory,
   category,
+  compact,
   dimmed,
+  hiddenOnMobile,
   dragging,
   onPointerDown,
 }: MemoryBalloonProps) {
   const color = category?.color ?? "#38bdf8"
   const seed = hashSeed(memory.id)
-  const floatX = ((seed % 9) - 4) * 1.1
-  const floatY = 5 + (seed % 6)
+  const floatScale = compact ? 0.5 : 1
+  const floatX = ((seed % 9) - 4) * 1.1 * floatScale
+  const floatY = (5 + (seed % 6)) * floatScale
   const duration = 4.8 + (seed % 10) * 0.2
   const delay = (seed % 16) * 0.1
 
   return (
     <div
       className={cn(
-        "absolute z-10 w-[min(190px,42vw)]",
+        "absolute z-10 w-[min(190px,42vw)] max-md:w-[112px]",
         dragging && "z-30",
-        dimmed && "opacity-35",
+        dimmed && "opacity-35 max-md:opacity-25",
+        hiddenOnMobile && "max-md:pointer-events-none max-md:opacity-0",
       )}
       style={{
         left: `${memory.x * 100}%`,
@@ -70,17 +76,19 @@ export function MemoryBalloon({
         }
       >
         <span
-          className="relative block rounded-[2rem] rounded-bl-md px-3.5 py-3 text-slate-800 ring-1 ring-white/75 backdrop-blur-[2px]"
+          className="relative block rounded-[2rem] rounded-bl-md px-3.5 py-3 text-slate-800 ring-1 ring-white/75 backdrop-blur-[2px] max-md:rounded-2xl max-md:rounded-bl-sm max-md:px-2 max-md:py-1.5 max-md:shadow-sm"
           style={{
             background: `linear-gradient(145deg, rgba(255,255,255,0.94) 0%, color-mix(in srgb, ${color} 32%, white) 100%)`,
-            boxShadow: `0 14px 28px -14px color-mix(in srgb, ${color} 65%, #1e3a5f)`,
+            boxShadow: compact
+              ? `0 8px 16px -12px color-mix(in srgb, ${color} 55%, #1e3a5f)`
+              : `0 14px 28px -14px color-mix(in srgb, ${color} 65%, #1e3a5f)`,
           }}
         >
-          <span className="font-heading block text-[0.88rem] leading-snug font-semibold text-slate-800">
+          <span className="font-heading block text-[0.88rem] leading-snug font-semibold text-slate-800 max-md:text-[0.68rem] max-md:leading-tight max-md:line-clamp-3">
             {memory.title}
           </span>
           {memory.notes ? (
-            <span className="mt-1 line-clamp-2 block text-[11px] leading-relaxed text-slate-600">
+            <span className="mt-1 line-clamp-2 block text-[11px] leading-relaxed text-slate-600 max-md:hidden">
               {memory.notes}
             </span>
           ) : null}

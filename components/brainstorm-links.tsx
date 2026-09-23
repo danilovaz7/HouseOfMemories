@@ -1,5 +1,6 @@
 "use client"
 
+import { useIsMobile } from "@/hooks/use-is-mobile"
 import type { Category, Memory } from "@/lib/types"
 
 type BrainstormLinksProps = {
@@ -28,6 +29,7 @@ export function BrainstormLinks({
   memories,
   activeCategoryId,
 }: BrainstormLinksProps) {
+  const isMobile = useIsMobile()
   const hubById = new Map(categories.map((category) => [category.id, category]))
 
   return (
@@ -48,7 +50,9 @@ export function BrainstormLinks({
             d={linkPath(hub.x, hub.y, memory.x, memory.y)}
             fill="none"
             stroke={hub.color}
-            strokeWidth={dimmed ? 0.18 : 0.28}
+            strokeWidth={
+              dimmed ? (isMobile ? 0.14 : 0.18) : isMobile ? 0.22 : 0.28
+            }
             strokeOpacity={dimmed ? 0.12 : 0.38}
             strokeLinecap="round"
           />

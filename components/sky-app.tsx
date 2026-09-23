@@ -12,11 +12,13 @@ import {
 import { SkyCanvas } from "@/components/sky-canvas"
 import { Toolbar } from "@/components/toolbar"
 import { Button } from "@/components/ui/button"
+import { useIsMobile } from "@/hooks/use-is-mobile"
 import { useSky } from "@/hooks/use-sky"
 import { findMemoryPositionNearCategory } from "@/lib/layout"
 import type { AppState } from "@/lib/types"
 
 export function SkyApp({ initialState }: { initialState: AppState }) {
+  const isMobile = useIsMobile()
   const sky = useSky(initialState)
   const [filter, setFilter] = useState<string | "all">("all")
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -34,7 +36,7 @@ export function SkyApp({ initialState }: { initialState: AppState }) {
   function openCreateForCategory(categoryId: string) {
     const category = categories.find((item) => item.id === categoryId)
     if (!category) return
-    const spot = findMemoryPositionNearCategory(category, memories)
+    const spot = findMemoryPositionNearCategory(category, memories, [], isMobile)
     setDraft({
       title: "",
       notes: "",
@@ -77,6 +79,7 @@ export function SkyApp({ initialState }: { initialState: AppState }) {
       categoryId: next.categoryId,
       x: next.x,
       y: next.y,
+      compact: isMobile,
     })
   }
 
